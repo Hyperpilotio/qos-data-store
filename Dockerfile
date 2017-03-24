@@ -11,7 +11,10 @@ ENV PATH=$PATH:/opt/qos-data-store/bin
 
 WORKDIR /opt/qos-data-store/bin
 
+COPY documents/dev.config /opt/qos-data-store/bin/dev.config
 COPY bin/qos-data-store /opt/qos-data-store/bin/
 RUN chmod +x /opt/qos-data-store/bin/qos-data-store
+RUN chmod 755 /opt/qos-data-store/bin/dev.config
 
-CMD /opt/qos-data-store/bin/qos-data-store
+CMD ["/opt/qos-data-store/bin/qos-data-store", "--config", "/opt/qos-data-store/bin/dev.config"]
+
