@@ -1,5 +1,5 @@
-hash: e6507a1629fac56ee988b97a5f23be1540ca02add34ccff16fd89a6d73c55dec
-updated: 2017-03-24T09:34:30.415194127+08:00
+hash: 3d8df21c8bc13e6c9ed59955ede975b6ebfccd709876e37e79989ce070526795
+updated: 2017-03-24T10:43:53.117600155+08:00
 imports:
 - name: github.com/fsnotify/fsnotify
   version: a904159b9206978bb6d53fcc7a769e5cd726c737
@@ -8,6 +8,8 @@ imports:
   subpackages:
   - binding
   - render
+- name: github.com/golang/glog
+  version: 23def4e6c14b4da8ac2ed8007337bc5eb5007998
 - name: github.com/golang/protobuf
   version: 2402d76f3d41f928c7902a765dfc872356dd3aad
   subpackages:

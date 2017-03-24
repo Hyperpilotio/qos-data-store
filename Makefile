@@ -22,6 +22,7 @@ help:
 	@echo '    make test            Run tests on a compiled project.'
 	@echo '    make push            Push tagged images to registry'
 	@echo '    make clean           Clean the directory tree.'
+	@echo '    make dev             Run the program.'
 	@echo
 
 build:
@@ -65,3 +66,5 @@ clean:
 test:
 	go test $(glide nv)
 
+dev: build
+	bin/${BIN_NAME} --config documents/dev.config
