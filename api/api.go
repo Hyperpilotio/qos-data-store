@@ -3,7 +3,6 @@ package api
 import (
 	"fmt"
 	"net/http"
-	"strconv"
 	"sync"
 
 	"github.com/gin-gonic/gin"
@@ -13,16 +12,25 @@ import (
 // Server store the stats / data of every deployment
 type Server struct {
 	Config *viper.Viper
-	// Maps name of metrics to its value
-	Counter map[string]int64
-	mutex   sync.Mutex
+
+	Apps  map[string]*AppMetrics
+	mutex sync.Mutex
+}
+
+type AppMetrics struct {
+	Name       string
+	QoSMetrics map[string]float64
+}
+
+func (app *AppMetrics) setMetric(name string, value float64) {
+	app.QoSMetrics[name] = value
 }
 
 // NewServer return an instance of Server struct.
 func NewServer(config *viper.Viper) *Server {
 	return &Server{
-		Config:  config,
-		Counter: make(map[string]int64),
+		Config: config,
+		Apps:   make(map[string]*AppMetrics),
 	}
 }
 
@@ -34,73 +42,55 @@ func (s *Server) StartServer() error {
 	router.Use(gin.Logger())
 	router.Use(gin.Recovery())
 
-	daemonsGroup := router.Group("/v1/metrics")
+	daemonsGroup := router.Group("/v1/apps/")
 	{
-		daemonsGroup.GET("", s.getMetricsList)
-		daemonsGroup.GET("/:metric", s.getMetric)
-		daemonsGroup.POST("/:metric", s.setMetric)
+		daemonsGroup.GET("/metrics", s.getAllMetrics)
+		daemonsGroup.POST("/:app/metrics/:metric", s.setMetric)
 
 	}
 
 	return router.Run(":" + s.Config.GetString("port"))
 }
 
-func (s *Server) getMetricsList(c *gin.Context) {
-	if len(s.Counter) == 0 {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": true,
-			"data":  "no metrics at all",
-		})
-		return
-	}
-
+func (s *Server) getAllMetrics(c *gin.Context) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
 	c.JSON(http.StatusOK, gin.H{
 		"error": false,
-		"data":  s.Counter,
-	})
-}
-
-func (s *Server) getMetric(c *gin.Context) {
-	metric := c.Param("metric")
-	if _, ok := s.Counter[metric]; !ok {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": true,
-			"data":  fmt.Sprintf("metric %s not found", metric),
-		})
-		return
-	}
-
-	c.JSON(http.StatusOK, gin.H{
-		"error": false,
-		"data":  s.Counter[metric],
+		"data":  s.Apps,
 	})
 }
 
 func (s *Server) setMetric(c *gin.Context) {
-	var metric string
+	app := c.Param("app")
+	metric := c.Param("metric")
 
-	metric = c.Param("metric")
-	if c.Query("val") == "" {
-		c.JSON(http.StatusNotFound, gin.H{
+	var json struct {
+		Value float64 `json:"value" binding:"required"`
+	}
+
+	if err := c.Bind(&json); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
 			"error": true,
-			"data":  fmt.Sprintf("value for metric %s not exist", metric),
+			"data":  fmt.Sprintf("Unable to parse request: %s", err.Error()),
 		})
 		return
 	}
 
-	v, err := strconv.ParseInt(c.Query("val"), 10, 64)
-	if err != nil {
-		c.JSON(http.StatusNotFound, gin.H{
-			"error": true,
-			"data":  fmt.Sprintf("value %s for metric %s is not valid", c.Query("val"), metric),
-		})
-		return
+	s.mutex.Lock()
+	s.mutex.Unlock()
+
+	_, ok := s.Apps[app]
+	if !ok {
+		s.Apps[app] = &AppMetrics{
+			Name:       app,
+			QoSMetrics: make(map[string]float64),
+		}
 	}
 
-	s.Counter[metric] = v
+	s.Apps[app].setMetric(metric, json.Value)
 
 	c.JSON(http.StatusOK, gin.H{
 		"error": false,
-		"data":  s.Counter[metric],
 	})
 }
