@@ -1,0 +1,16 @@
+FROM lacion/docker-alpine:gobuildimage
+
+LABEL app="build-qos-data-store"
+LABEL REPO="https://github.com/hyperpilotio/qos-data-store"
+
+ENV GOROOT=/usr/lib/go \
+    GOPATH=/gopath \
+    GOBIN=/gopath/bin \
+    PROJPATH=/gopath/src/github.com/hyperpilotio/qos-data-store
+
+# Because of https://github.com/docker/docker/issues/14914
+ENV PATH=$PATH:$GOROOT/bin:$GOPATH/bin
+
+WORKDIR /gopath/src/github.com/hyperpilotio/qos-data-store
+
+CMD ["make","build-alpine"]
