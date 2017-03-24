@@ -3,6 +3,9 @@
 *.a
 *.so
 
+# vendor
+vendor
+
 # Folders
 _obj
 _test
