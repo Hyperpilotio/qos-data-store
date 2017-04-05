@@ -18,8 +18,8 @@ type Server struct {
 }
 
 type AppMetrics struct {
-	Name       string
-	QoSMetrics map[string]float64
+	Name       string             `json:"name"`
+	QoSMetrics map[string]float64 `json:"metrics"`
 }
 
 func (app *AppMetrics) setMetric(name string, value float64) {
@@ -46,7 +46,6 @@ func (s *Server) StartServer() error {
 	{
 		daemonsGroup.GET("/metrics", s.getAllMetrics)
 		daemonsGroup.POST("/:app/metrics/:metric", s.setMetric)
-
 	}
 
 	return router.Run(":" + s.Config.GetString("port"))
