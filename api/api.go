@@ -93,6 +93,7 @@ func (s *Server) getAllMetrics(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"error":   false,
 			"enabled": false,
+			"data":    map[string]string{},
 		})
 	}
 }
