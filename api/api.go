@@ -11,10 +11,10 @@ import (
 
 // Server store the stats / data of every deployment
 type Server struct {
-	Config *viper.Viper
-
-	Apps  map[string]*AppMetrics
-	mutex sync.Mutex
+	Config  *viper.Viper
+	Apps    map[string]*AppMetrics
+	enabled bool
+	mutex   sync.Mutex
 }
 
 type AppMetrics struct {
@@ -48,16 +48,53 @@ func (s *Server) StartServer() error {
 		daemonsGroup.POST("/:app/metrics/:metric", s.setMetric)
 	}
 
+	switchGroup := router.Group("/v1/switch/")
+	{
+		switchGroup.POST("/on", s.switchOn)
+		switchGroup.POST("/off", s.switchOff)
+	}
+
 	return router.Run(":" + s.Config.GetString("port"))
+}
+
+func (s *Server) switchOn(c *gin.Context) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.enabled = true
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"error": false,
+	})
+}
+
+func (s *Server) switchOff(c *gin.Context) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	s.enabled = false
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"error": false,
+	})
 }
 
 func (s *Server) getAllMetrics(c *gin.Context) {
 	s.mutex.Lock()
 	defer s.mutex.Unlock()
-	c.JSON(http.StatusOK, gin.H{
-		"error": false,
-		"data":  s.Apps,
-	})
+
+	if s.enabled {
+		c.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"data":    s.Apps,
+			"enabled": true,
+		})
+	} else {
+		c.JSON(http.StatusOK, gin.H{
+			"error":   false,
+			"enabled": false,
+		})
+	}
 }
 
 func (s *Server) setMetric(c *gin.Context) {

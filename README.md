@@ -25,7 +25,12 @@ make dev
 docker run -d -p 7781:7781 hyperpilot/qos-data-store:latest
 
 # Insert value
-curl -XPOST "http://localhost:7781/v1/metrics/httprequest?val=100"
+curl -H "Content-Type: application/json" -XPOST localhost:7781/v1/apps/goddd/metrics/qos -d '{"value": 1.45}'
 # Query value
-curl -XGET"http://localhost:7781/v1/metrics/httprequest"
+curl http://localhost:7781/v1/metrics
 ```
+# Switch on
+curl -XPOST "http://localhost:7781/v1/switch/on
+
+# Switch off
+curl -XPOST "http://localhost:7781/v1/switch/off
