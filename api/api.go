@@ -1,7 +1,11 @@
 package api
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -102,11 +106,20 @@ func (s *Server) setMetric(c *gin.Context) {
 	app := c.Param("app")
 	metric := c.Param("metric")
 
-	var json struct {
+	var body struct {
 		Value float64 `json:"value" binding:"required"`
 	}
 
-	if err := c.Bind(&json); err != nil {
+	var buf bytes.Buffer
+	tee := io.TeeReader(c.Request.Body, &buf)
+	b, err := ioutil.ReadAll(tee)
+	if err != nil {
+		fmt.Println("Unable to tee body: " + err.Error())
+	} else {
+		fmt.Printf("Received set metric request: %s\n", b)
+	}
+
+	if err := json.NewDecoder(&buf).Decode(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": true,
 			"data":  fmt.Sprintf("Unable to parse request: %s", err.Error()),
@@ -125,7 +138,7 @@ func (s *Server) setMetric(c *gin.Context) {
 		}
 	}
 
-	s.Apps[app].setMetric(metric, json.Value)
+	s.Apps[app].setMetric(metric, body.Value)
 
 	c.JSON(http.StatusOK, gin.H{
 		"error": false,
