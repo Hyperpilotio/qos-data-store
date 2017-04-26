@@ -1,11 +1,7 @@
 package api
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"net/http"
 	"sync"
 
@@ -50,6 +46,7 @@ func (s *Server) StartServer() error {
 	{
 		daemonsGroup.GET("/metrics", s.getAllMetrics)
 		daemonsGroup.POST("/:app/metrics/:metric", s.setMetric)
+		daemonsGroup.POST("/:app/metrics", s.setMetrics)
 	}
 
 	switchGroup := router.Group("/v1/switch/")
@@ -110,16 +107,7 @@ func (s *Server) setMetric(c *gin.Context) {
 		Value float64 `json:"value" binding:"required"`
 	}
 
-	var buf bytes.Buffer
-	tee := io.TeeReader(c.Request.Body, &buf)
-	b, err := ioutil.ReadAll(tee)
-	if err != nil {
-		fmt.Println("Unable to tee body: " + err.Error())
-	} else {
-		fmt.Printf("Received set metric request: %s\n", b)
-	}
-
-	if err := json.NewDecoder(&buf).Decode(&body); err != nil {
+	if err := c.Bind(&body); err != nil {
 		c.JSON(http.StatusBadRequest, gin.H{
 			"error": true,
 			"data":  fmt.Sprintf("Unable to parse request: %s", err.Error()),
@@ -128,7 +116,7 @@ func (s *Server) setMetric(c *gin.Context) {
 	}
 
 	s.mutex.Lock()
-	s.mutex.Unlock()
+	defer s.mutex.Unlock()
 
 	_, ok := s.Apps[app]
 	if !ok {
@@ -139,6 +127,39 @@ func (s *Server) setMetric(c *gin.Context) {
 	}
 
 	s.Apps[app].setMetric(metric, body.Value)
+
+	c.JSON(http.StatusOK, gin.H{
+		"error": false,
+	})
+}
+
+func (s *Server) setMetrics(c *gin.Context) {
+	app := c.Param("app")
+
+	var body map[string]float64
+
+	if err := c.Bind(&body); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{
+			"error": true,
+			"data":  fmt.Sprintf("Unable to parse request: %s", err.Error()),
+		})
+		return
+	}
+
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	_, ok := s.Apps[app]
+	if !ok {
+		s.Apps[app] = &AppMetrics{
+			Name:       app,
+			QoSMetrics: make(map[string]float64),
+		}
+	}
+
+	for k, v := range body {
+		s.Apps[app].setMetric(k, v)
+	}
 
 	c.JSON(http.StatusOK, gin.H{
 		"error": false,
