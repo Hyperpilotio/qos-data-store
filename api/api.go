@@ -49,6 +49,8 @@ func (s *Server) StartServer() error {
 		daemonsGroup.POST("/:app/metrics", s.setMetrics)
 	}
 
+	router.GET("/v1/switch", s.switchStatus)
+
 	switchGroup := router.Group("/v1/switch/")
 	{
 		switchGroup.POST("/on", s.switchOn)
@@ -56,6 +58,16 @@ func (s *Server) StartServer() error {
 	}
 
 	return router.Run(":" + s.Config.GetString("port"))
+}
+
+func (s *Server) switchStatus(c *gin.Context) {
+	s.mutex.Lock()
+	defer s.mutex.Unlock()
+
+	c.JSON(http.StatusAccepted, gin.H{
+		"error": false,
+		"data":  s.enabled,
+	})
 }
 
 func (s *Server) switchOn(c *gin.Context) {
